@@ -47,7 +47,7 @@ function createVisitorPayload(live) {
     },
     signals: {
       user_agent: live.signals.user_agent,
-      canvas_fingerprint: live.signals.canvas_fingerprint ?? null,
+      canvas_fingerprint: live.signals.canvas_fingerprint,
       webgl_vendor: live.signals.webgl_vendor,
       webgl_renderer: live.signals.webgl_renderer
     }
@@ -72,3 +72,5 @@ function mergeLiveEnvironment(profile, live = collectBrowserEnvironment()) {
 
   return profile;
 }
+
+

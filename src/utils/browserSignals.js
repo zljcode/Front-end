@@ -22,7 +22,8 @@ export function collectBrowserEnvironment() {
     signals: {
       user_agent: userAgent,
       webgl_vendor: webgl.vendor,
-      webgl_renderer: webgl.renderer
+      webgl_renderer: webgl.renderer,
+      canvas_fingerprint: getCanvasFingerprint(),
     }
   };
 }
@@ -80,4 +81,34 @@ function getWebGLInfo() {
     vendor: gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL),
     renderer: gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
   };
+}
+
+
+
+function getCanvasFingerprint() {
+  try {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return 'Not available';
+
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#f60';
+    ctx.fillRect(125, 1, 62, 20);
+    ctx.fillStyle = '#069';
+    ctx.fillText('Browser Fingerprint', 2, 15);
+    ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+    ctx.fillText('Browser Fingerprint', 4, 17);
+
+    //转成 hash
+    const data = canvas.toDataURL();
+    let hash = 0;
+    for (let i = 0; i < data.length; i++) {
+      hash = (hash << 5) - hash + data.charCodeAt(i);
+      hash |= 0;
+    }
+    return hash.toString();
+  } catch (e) {
+    return "Not available"
+  }
 }

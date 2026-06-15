@@ -123,3 +123,37 @@ npm run dev
 ```text
 http://127.0.0.1:5173
 ```
+
+## 2026-06-15 前后端联调与 Canvas Fingerprint 修复
+
+### 本阶段完成内容
+
+- 前端 `src/services/visitorService.js` 已从本地 mock 主流程切换为请求后端 `/api/visitor`。
+- 浏览器环境信号会通过 `POST /api/visitor` 发送给后端。
+- 后端会返回与前端 DTO 一致的结构，前端页面无需改动展示层结构。
+- `Canvas Fingerprint` 已接入真实采集逻辑，并在页面技术信号区域成功显示真实值。
+- `WebGL Vendor` 与 `WebGL Renderer` 也已通过真实浏览器环境返回并展示。
+
+### 本次定位到的问题
+
+- `Canvas Fingerprint` 最初看起来没有生效，不是代码链路没接上，而是浏览器缓存没有刷新。
+- 处理方式：
+  - 强制刷新页面
+  - 或在 DevTools 中禁用缓存后重新加载静态资源
+
+### 当前状态
+
+- 前端地址：`http://127.0.0.1:5173`
+- 后端地址：`http://127.0.0.1:8000`
+- 当前页面已经可以展示真实浏览器信号：
+  - `User Agent`
+  - `Platform`
+  - `Canvas Fingerprint`
+  - `WebGL Vendor`
+  - `WebGL Renderer`
+
+### 下一步建议
+
+1. 补匿名模式的启发式检测。
+2. 梳理 VPN / 代理状态的后端判断来源。
+3. 再逐步推进真实 `risk_query` 的接入。
