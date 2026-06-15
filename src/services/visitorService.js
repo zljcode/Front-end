@@ -6,7 +6,7 @@ const API_BASE_URL =
   "http://127.0.0.1:8000/api";
 
 export async function getVisitorProfile(scenario = defaultScenario) {
-  const live = collectBrowserEnvironment();
+  const live = await collectBrowserEnvironment();
   const payload = createVisitorPayload(live);
 
   try {
@@ -43,7 +43,9 @@ function createVisitorPayload(live) {
       platform: live.environment.platform,
       screen_resolution: live.environment.screen_resolution,
       hardware_concurrency: live.environment.hardware_concurrency,
-      device_memory: live.environment.device_memory
+      device_memory: live.environment.device_memory,
+      is_incognito: live.environment.is_incognito,
+      incognito_confidence: live.environment.incognito_confidence,      
     },
     signals: {
       user_agent: live.signals.user_agent,
@@ -54,7 +56,7 @@ function createVisitorPayload(live) {
   };
 }
 
-function mergeLiveEnvironment(profile, live = collectBrowserEnvironment()) {
+function mergeLiveEnvironment(profile, live ) {
   profile.environment = {
     ...profile.environment,
     ...live.environment

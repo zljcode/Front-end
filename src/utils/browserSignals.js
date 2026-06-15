@@ -1,10 +1,11 @@
-export function collectBrowserEnvironment() {
+export async function collectBrowserEnvironment() {
   const nav = window.navigator;
   const screenSize = `${window.screen.width}x${window.screen.height}`;
   const userAgent = nav.userAgent || "Unknown";
   const browser = parseBrowser(userAgent);
   const osName = parseOS(userAgent, nav.platform);
   const webgl = getWebGLInfo();
+  const incognito = await detectIncognitoState(browser.name);
 
   return {
     environment: {
@@ -17,7 +18,9 @@ export function collectBrowserEnvironment() {
       platform: nav.platform || "unknown",
       screen_resolution: screenSize,
       hardware_concurrency: nav.hardwareConcurrency || "unknown",
-      device_memory: nav.deviceMemory || "unknown"
+      device_memory: nav.deviceMemory || "unknown",
+      is_incognito: incognito.is_incognito,
+      incognito_confidence: incognito.incognito_confidence,
     },
     signals: {
       user_agent: userAgent,
@@ -110,5 +113,100 @@ function getCanvasFingerprint() {
     return hash.toString();
   } catch (e) {
     return "Not available"
+  }
+}
+
+// 判断是不是匿名模式访问 只有证据比较强时，才返回 is_incognito: true + incognito_confidence: "detected"
+async function detectIncognitoState(browserName) {
+  const fallback = {
+    is_incognito: null,
+    incognito_confidence: "unknown"
+  }
+
+  try {
+    const isChromium = browserName === "Chrome" || browserName === "Edge";
+    if (!isChromium) {
+      return fallback;
+    }
+
+    const quotaSignal = await detectByStorageQuota();
+    if (quotaSignal.is_incognito === true) {
+      return quotaSignal;
+    }
+
+    const fsSignal = await detectByFileSystemApi();
+    if (fsSignal.is_incognito === true) {
+      return fsSignal;
+    }
+
+    return fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+// storage quota 启发式
+async function detectByStorageQuota() {
+  const fallback = {
+    is_incognito: null,
+    incognito_confidence: "unknown"
+  };
+
+  if (!navigator.storage || !navigator.storage.estimate) {
+    return fallback;
+  }
+
+  try {
+    const { quota } = await navigator.storage.estimate();
+    if (typeof quota !== "number") {
+      return fallback;
+    }
+
+    const threshold = 120 * 1024 * 1024;
+
+    if (quota <= threshold) {
+      return {
+        is_incognito: true,
+        incognito_confidence: "detected"
+      };
+    }
+
+    return fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+
+// FlieSystem API启发式
+async function detectByFileSystemApi() {
+  const fallback = {
+    is_incognito: null,
+    incognito_confidence: "unknown"
+  };
+
+  const requestFileSystem =
+    window.RequestFileSystem || window.webkitRequestFileSystem;
+
+  if (!requestFileSystem) {
+    return fallback;
+  }
+
+  try {
+    await new Promise((resolve, reject) => {
+      requestFileSystem(
+        window.TEMPORARY,
+        100,
+        () => resolve(),
+        () => reject()
+      );
+    });
+
+    return fallback;
+  } catch (error) {
+    return {
+      is_incognito: true,
+      incognito_confidence: "detected"
+    };
   }
 }
