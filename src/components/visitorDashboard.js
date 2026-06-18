@@ -1,25 +1,31 @@
-import { riskScenarios } from "../data/mockVisitor.js";
 import { getVisitorProfile } from "../services/visitorService.js";
+import { getCachedGeeToken } from "../services/geeGuardService.js";
 import {
   emptyValue,
   formatBooleanState,
   formatDateTime,
   formatMemory,
+  formatQueryStatus,
+  formatTokenSource,
+  formatUnixTime,
   riskTone
 } from "../utils/formatters.js";
 import { escapeHtml } from "../utils/html.js";
 
 export function renderDashboard(root, profile) {
   root.innerHTML = createDashboardTemplate(profile);
-  bindScenarioControls(root);
   bindRefresh(root);
 }
 
 function createDashboardTemplate(profile) {
   const tone = riskTone[profile.risk_level] ?? riskTone.review;
-  const riskCodes = profile.risk_code.length
-    ? profile.risk_code.map((code) => `<span class="risk-code">${escapeHtml(code)}</span>`).join("")
+  const riskCodeList = Array.isArray(profile.risk_code) ? profile.risk_code : [];
+  const riskCodes = riskCodeList.length
+    ? riskCodeList.map((code) => `<span class="risk-code">${escapeHtml(code)}</span>`).join("")
     : '<span class="empty-risk">NO_RISK_CODE</span>';
+  const clientState = profile.__client ?? {};
+  const fingerprint = profile.fingerprint ?? {};
+  const isApiMode = clientState.mode === "api";
 
   return `
     <header class="topbar">
@@ -28,7 +34,7 @@ function createDashboardTemplate(profile) {
         <span>Visitor Risk</span>
       </a>
       <div class="topbar-actions">
-        <span class="mode-pill">Mock mode</span>
+        <span class="mode-pill">${isApiMode ? "API mode" : "Mock fallback"}</span>
         <button class="ghost-button" data-action="refresh" type="button">Refresh</button>
       </div>
     </header>
@@ -48,20 +54,13 @@ function createDashboardTemplate(profile) {
             <p class="eyebrow">CURRENT VISITOR</p>
             <h2>Hello, visitor ID <span>${escapeHtml(profile.visitor_id)}</span></h2>
           </div>
-          <div class="scenario-switcher" aria-label="Mock scenario switcher">
-            ${Object.keys(riskScenarios)
-              .map(
-                (scenario) => `
-                  <button
-                    class="${scenario === profile.risk_level ? "active" : ""}"
-                    data-scenario="${scenario}"
-                    type="button"
-                  >
-                    ${escapeHtml(scenario)}
-                  </button>
-                `
-              )
-              .join("")}
+          <div class="control-stack">
+            <div class="token-form">
+              <label>
+                <span>GeeToken</span>
+                <input name="geeToken" autocomplete="off" value="${escapeHtml(clientState.geeToken ?? "")}">
+              </label>
+            </div>
           </div>
         </div>
 
@@ -72,6 +71,8 @@ function createDashboardTemplate(profile) {
               ${summaryItem("IP Address", profile.network.ip)}
               ${summaryItem("Incognito", formatBooleanState(profile.environment.is_incognito, profile.environment.incognito_confidence))}
               ${summaryItem("VPN / Proxy", formatBooleanState(profile.network.is_vpn, profile.network.vpn_confidence))}
+              ${summaryItem("Client Report", formatQueryStatus(profile.meta.client_report_status))}
+              ${summaryItem("GeeToken Query", formatQueryStatus(profile.meta.geetoken_query_status))}
             </div>
 
             <div class="section-heading">
@@ -129,6 +130,16 @@ function createDashboardTemplate(profile) {
               ${detailRow("IP Type", profile.network.ip_type)}
               ${detailRow("VPN Confidence", profile.network.vpn_confidence)}
               ${detailRow("Incognito Confidence", profile.environment.incognito_confidence)}
+              ${detailRow("Client Report Used", profile.meta.client_report_used ? "Yes" : "No")}
+              ${detailRow("Client Report Status", formatQueryStatus(profile.meta.client_report_status))}
+              ${detailRow("GeeToken Used", profile.meta.geetoken_query_used ? "Yes" : "No")}
+              ${detailRow("GeeToken Status", formatQueryStatus(profile.meta.geetoken_query_status))}
+              ${detailRow("Token Source", formatTokenSource(profile.meta.token_source))}
+              ${detailRow("Fingerprint Local ID", fingerprint.local_id)}
+              ${detailRow("Fingerprint Root ID", fingerprint.root_id)}
+              ${detailRow("Fingerprint Sign", fingerprint.sign)}
+              ${detailRow("Server Timestamp", formatUnixTime(fingerprint.server_ts))}
+              ${detailRow("Client Timestamp", formatUnixTime(fingerprint.client_ts))}
               ${detailRow("Request Time", formatDateTime(profile.meta.request_time))}
             </div>
           </section>
@@ -165,21 +176,26 @@ function signalRow(label, value) {
   `;
 }
 
-function bindScenarioControls(root) {
-  root.querySelectorAll("[data-scenario]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const scenario = button.dataset.scenario;
-      button.closest(".scenario-switcher").classList.add("is-loading");
-      const nextProfile = await getVisitorProfile(scenario);
-      renderDashboard(root, nextProfile);
-    });
+function bindRefresh(root) {
+  root.querySelector("[data-action='refresh']").addEventListener("click", async () => {
+    const nextProfile = await getVisitorProfile(getCurrentRequestOptions(root));
+    renderDashboard(root, nextProfile);
   });
 }
 
-function bindRefresh(root) {
-  root.querySelector("[data-action='refresh']").addEventListener("click", async () => {
-    const activeScenario = root.querySelector("[data-scenario].active")?.dataset.scenario ?? "pass";
-    const nextProfile = await getVisitorProfile(activeScenario);
-    renderDashboard(root, nextProfile);
-  });
+function getCurrentRequestOptions(root) {
+  const input = root.querySelector("[name='geeToken']");
+  if (!input) {
+    return {};
+  }
+
+  const manualGeeToken = String(input.value ?? "").trim();
+  const autoToken = getCachedGeeToken();
+
+  // 手动输入优先；如果没有手动输入，自动复用 SDK 获取的 token
+  const geeToken = manualGeeToken || autoToken || "";
+
+  return {
+    geeToken
+  };
 }

@@ -5,12 +5,12 @@ const API_BASE_URL =
   // (import.meta.env && import.meta.env.VITE_API_BASE_URL) ||
   "http://127.0.0.1:8000/api";
 
-export async function getVisitorProfile(scenario = defaultScenario) {
+export async function getVisitorProfile(options = {}) {
   const live = await collectBrowserEnvironment();
-  const payload = createVisitorPayload(live);
+  const payload = createVisitorPayload(live, options);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/visitor?scenario=${encodeURIComponent(scenario)}`, {
+    const response = await fetch(`${API_BASE_URL}/visitor`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -22,17 +22,17 @@ export async function getVisitorProfile(scenario = defaultScenario) {
       throw new Error(`Visitor API request failed with status ${response.status}`);
     }
 
-    return await response.json();
+    const profile = await response.json();
+    return attachClientState(profile, options, "api");
   } catch (error) {
     console.warn("Falling back to local visitor mock data.", error);
-    const selected = riskScenarios[scenario] ?? riskScenarios[defaultScenario];
-    return mergeLiveEnvironment(structuredClone(selected), live);
-
+    const selected = riskScenarios[defaultScenario];
+    return attachClientState(mergeLiveEnvironment(cloneProfile(selected), live), options, "mock");
   }
 }
 
-function createVisitorPayload(live) {
-  return {
+function createVisitorPayload(live, options) {
+  const payload = {
     environment: {
       browser_name: live.environment.browser_name,
       browser_version: live.environment.browser_version,
@@ -45,7 +45,7 @@ function createVisitorPayload(live) {
       hardware_concurrency: live.environment.hardware_concurrency,
       device_memory: live.environment.device_memory,
       is_incognito: live.environment.is_incognito,
-      incognito_confidence: live.environment.incognito_confidence,      
+      incognito_confidence: live.environment.incognito_confidence,
     },
     signals: {
       user_agent: live.signals.user_agent,
@@ -54,9 +54,16 @@ function createVisitorPayload(live) {
       webgl_renderer: live.signals.webgl_renderer
     }
   };
+
+  const geeToken = options.geeToken?.trim();
+  if (geeToken) {
+    payload.gee_token = geeToken;
+  }
+
+  return payload;
 }
 
-function mergeLiveEnvironment(profile, live ) {
+function mergeLiveEnvironment(profile, live) {
   profile.environment = {
     ...profile.environment,
     ...live.environment
@@ -75,4 +82,31 @@ function mergeLiveEnvironment(profile, live ) {
   return profile;
 }
 
+function attachClientState(profile, options, mode) {
+  const geeToken = options.geeToken?.trim() ?? "";
 
+  return {
+    ...profile,
+    fingerprint: profile.fingerprint ?? null,
+    meta: {
+      geetoken_query_used: false,
+      geetoken_query_status: "skipped",
+      token_source: "none",
+      ...profile.meta,
+      client_report_used: Boolean(geeToken),
+      client_report_status: geeToken ? "success" : "skipped"
+    },
+    __client: {
+      mode,
+      geeToken
+    }
+  };
+}
+
+function cloneProfile(profile) {
+  if (typeof structuredClone === "function") {
+    return structuredClone(profile);
+  }
+
+  return JSON.parse(JSON.stringify(profile));
+}

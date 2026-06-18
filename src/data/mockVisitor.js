@@ -30,14 +30,20 @@ export const riskScenarios = {
       webgl_vendor: null,
       webgl_renderer: null
     },
+    fingerprint: null,
     meta: {
-      request_time: "2026-06-11T18:00:00+08:00"
+      request_time: "2026-06-11T18:00:00+08:00",
+      client_report_used: false,
+      client_report_status: "skipped",
+      geetoken_query_used: false,
+      geetoken_query_status: "skipped",
+      token_source: "none"
     }
   },
   review: {
     visitor_id: "GEE3-01-r7c9d4b2e103",
     risk_level: "review",
-    risk_code: ["VPN_PROXY_SUSPECTED", "INCOGNITO_UNKNOWN"],
+    risk_code: [20500, "INCOGNITO_UNKNOWN"],
     risk_summary: "Needs Review",
     network: {
       ip: "103.167.135.36",
@@ -65,14 +71,26 @@ export const riskScenarios = {
       webgl_vendor: null,
       webgl_renderer: null
     },
+    fingerprint: {
+      local_id: "mock-local-review",
+      root_id: "mock-root-review",
+      sign: null,
+      server_ts: null,
+      client_ts: null
+    },
     meta: {
-      request_time: "2026-06-11T18:00:00+08:00"
+      request_time: "2026-06-11T18:00:00+08:00",
+      client_report_used: false,
+      client_report_status: "skipped",
+      geetoken_query_used: false,
+      geetoken_query_status: "skipped",
+      token_source: "none"
     }
   },
   reject: {
     visitor_id: "GEE3-01-z2f6a0c5d441",
     risk_level: "reject",
-    risk_code: ["BOT_AUTOMATION", "IP_REPUTATION_HIGH_RISK", "DEVICE_MISMATCH"],
+    risk_code: [20606, "BOT_AUTOMATION", "IP_REPUTATION_HIGH_RISK"],
     risk_summary: "High Risk",
     network: {
       ip: "198.51.100.24",
@@ -100,8 +118,20 @@ export const riskScenarios = {
       webgl_vendor: "Google Inc.",
       webgl_renderer: "SwiftShader"
     },
+    fingerprint: {
+      local_id: "mock-local-reject",
+      root_id: "mock-root-reject",
+      sign: "mock-signature-reject",
+      server_ts: 1781661600,
+      client_ts: 1781661598
+    },
     meta: {
-      request_time: "2026-06-11T18:00:00+08:00"
+      request_time: "2026-06-11T18:00:00+08:00",
+      client_report_used: false,
+      client_report_status: "skipped",
+      geetoken_query_used: false,
+      geetoken_query_status: "skipped",
+      token_source: "none"
     }
   }
 };

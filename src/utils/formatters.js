@@ -51,3 +51,32 @@ export function formatMemory(value) {
 
   return `${value} GB`;
 }
+
+export function formatQueryStatus(value) {
+  const statusMap = {
+    skipped: "Skipped",
+    success: "Success",
+    failed: "Failed",
+    error: "Failed"
+  };
+
+  return statusMap[value] ?? emptyValue(value);
+}
+
+export function formatTokenSource(value) {
+  const sourceMap = {
+    none: "None",
+    gee_token: "GeeToken"
+  };
+
+  return sourceMap[value] ?? emptyValue(value);
+}
+
+export function formatUnixTime(value) {
+  if (value === null || value === undefined || value === "") return "Not available";
+
+  const timestamp = Number(value);
+  if (!Number.isFinite(timestamp)) return value;
+
+  return formatDateTime(timestamp > 100000000000 ? timestamp : timestamp * 1000);
+}
